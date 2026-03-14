@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import label
-from skimage.morphology import binary_opening
+from skimage.morphology import opening
 
 struct = np.ones((3, 1))
 
@@ -10,22 +10,19 @@ processes = []
 
 for i in range(1, 7):
     image = np.load(f"wires{i}.npy")
-    process = binary_opening(image, struct)
-    images.append(image)
-    processes.append(process)
+    labeled_image = label(image)
+    for wires_id in range (1, np.max(labeled_image) + 1 ):
+        wire = labeled_image == wires_id
+        parts = opening(wire, struct)
+        labeled_parts = label(parts)
+        parts_count = np.max(labeled_parts)
+        print("")
+        print(f"Картинка {i}:")
+        print(f"Провод {wires_id} имеет {parts_count} частей")
 
+# plt.subplot(121)
+# plt.imshow(image)
+# plt.subplot(122)
+# plt.imshow(process)
+# plt.show()
 
-for i in range(6):
-    labeled_image = label(images[i])
-    labeled_process = label(processes[i])
-
-    print(f"File wires{i + 1}.npy:")
-    print(f"Original {np.max(labeled_image)}")
-    print(f"Processed {np.max(labeled_process)}")
-    print()
-
-plt.subplot(121)
-plt.imshow(labeled_image == 2)
-plt.subplot(122)
-plt.imshow(processes[-1])
-plt.show()
