@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
 
-
-
 def solve_trajectories():
     trajectories = {}
     for i in range(100):
