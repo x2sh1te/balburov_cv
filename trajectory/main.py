@@ -1,33 +1,56 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import ndimage
+from scipy.ndimage import label, center_of_mass
+import glob
+import os
 
-def solve_trajectories():
-    trajectories = {}
-    for i in range(100):
-        file_path = f'h_{i}.npy'
-        img = np.load(file_path)
-        labeled_array, num_features = ndimage.label(img > 0)
-        centers = ndimage.center_of_mass(img, labeled_array, range(1, num_features + 1))
+# Параметры
+folder = "C:\Users\nikit\OneDrive\Desktop\compvision\trajectory"  # Укажите путь к папке с файлами
+threshold = 0.5  # Порог для бинаризации (настройте под ваши данные)
+max_objects = 10  # Максимальное число объектов для отслеживания
 
-        for obj_id, center in enumerate(centers):
-            y, x = center
-            if obj_id not in trajectories:
-                trajectories[obj_id] = []
-            trajectories[obj_id].append((x, y))
+# Словарь для хранения траекторий: {object_id: [(x1,y1), (x2,y2), ...]}
+trajectories = {}
 
-    plt.figure(figsize=(12, 10))
+# Получаем отсортированный список файлов
+files = sorted(glob.glob(os.path.join(folder, "h_*.npy")),
+               key=lambda x: int(x.split('_')[-1].split('.')[0]))
 
-    for obj_id, coords in trajectories.items():
-        if len(coords) > 1:
-            x_vals, y_vals = zip(*coords)
+for frame_idx, filepath in enumerate(files):
+    data = np.load(filepath)
 
-            plt.plot(x_vals, y_vals, marker='o', markersize=3, linewidth=1)
+    # Бинаризация и поиск объектов
+    binary = data > threshold
+    labeled, num = label(binary)
 
-    plt.legend(loc='best', fontsize=10)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.show()
+    # Получаем центры масс объектов
+    centers = center_of_mass(binary, labeled, range(1, num + 1))
 
-if __name__ == '__main__':
-    solve_trajectories()
+    # Простая ассоциация объектов по ближайшему соседу (для демо)
+    # В реальном проекте используйте Hungarian algorithm или SORT/DeepSORT
+    current_positions = [(int(c[1]), int(c[0])) for c in centers]  # (x, y)
+
+    # Здесь должна быть логика трекинга (ID assignment)
+    # Для простоты: считаем, что объекты не пересекаются и идут по порядку
+    for obj_id, (x, y) in enumerate(current_positions[:max_objects]):
+        if obj_id not in trajectories:
+            trajectories[obj_id] = []
+        trajectories[obj_id].append((frame_idx, x, y))
+
+# Визуализация траекторий
+plt.figure(figsize=(12, 8))
+colors = plt.cm.tab10(np.linspace(0, 1, max_objects))
+
+for obj_id, traj in trajectories.items():
+    if len(traj) > 1:
+        frames, xs, ys = zip(*traj)
+        plt.plot(xs, ys, '-o', label=f'Object {obj_id}',
+                 color=colors[obj_id % len(colors)], markersize=3)
+
+plt.xlabel('X coordinate')
+plt.ylabel('Y coordinate')
+plt.title('Trajectories of Objects (frames h_0 to h_99)')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
