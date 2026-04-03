@@ -24,7 +24,7 @@ def is_symmetric_lr(img, threshold=0.72):
     if w < 4: return False
     mid = w // 2
     left = img[:, :mid]
-    right = img[:, w - mid:][:, ::-1]  # Зеркалим правую часть
+    right = img[:, w - mid:][:, ::-1]  
     min_w = min(left.shape[1], right.shape[1])
     similarity = np.mean(left[:, :min_w] == right[:, :min_w])
     return similarity > threshold  # ← если похоже → "8"
@@ -36,7 +36,7 @@ def narrows_at_bottom(img, ratio_thresh=0.75):
     if h < 6: return False
     middle = img[h // 3: 2 * h // 3, :]
     bottom = img[2 * h // 3:, :]
-    # Ширина = количество колонок, где есть хоть один пиксель
+
     mid_width = np.sum(np.any(middle, axis=0))
     bot_width = np.sum(np.any(bottom, axis=0))
     if mid_width == 0: return False
@@ -93,7 +93,7 @@ result = {}
 plt.figure(figsize=(4, 5))
 
 for region in aprops:
-    symbol = classificator(region)  # 🔍 Распознаём
+    symbol = classificator(region)  
     result[symbol] = result.get(symbol, 0) + 1
     plt.cla()
     plt.title(f"'{symbol}'")  # ← подпись класса
