@@ -26,6 +26,7 @@ def extractor(region):
     aspect = region.image.shape[0] / region.image.shape[1]
     return np.array([region.area/region.image.size, cy, cx, perimeter, holes, hlines, vlines, eccentricity, aspect])
 
+<<<<<<< HEAD
 def classificator(region, templates):
     features = extractor(region)
     result = ""
@@ -35,6 +36,11 @@ def classificator(region, templates):
         if d < min_d:
             result = symbol
             min_d = d
+=======
+
+    plus_sum = np.sum(plus)
+    cross_sum = np.sum(cross)
+>>>>>>> e0ab09a7af4ecbad2b3b3e96e8a3724ced0e3396
 
     return result
 
@@ -57,6 +63,7 @@ print(type(props[0]))
 print(props[0].area, props[0].centroid, props[0].label)
 print(classificator(props[0], templates))
 
+<<<<<<< HEAD
 image = imread("alphabet.png")[:,:,:-1]
 abinary = image.mean(2) > 0
 alabeled = label(abinary)
@@ -86,3 +93,7 @@ print(result)
 
 plt.imshow(abinary)
 plt.show()
+=======
+if __name__ == '__main__':
+    main()
+>>>>>>> e0ab09a7af4ecbad2b3b3e96e8a3724ced0e3396
