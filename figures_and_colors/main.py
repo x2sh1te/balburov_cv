@@ -72,7 +72,5 @@ def process_colored_shapes(image_path):
     for color, count in circle_stats.items():
         print(f"  - {color}: {count}")
 
-
-# Путь к вашему файлу
 path = r'C:\Users\nikit\OneDrive\Desktop\compvision\figures_and_colors\balls_and_rects.png'
 process_colored_shapes(path)
