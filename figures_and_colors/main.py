@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
+from skimage.io import imread
 from collections import Counter
+import os
+
 
 def get_color_name(hue):
     if (hue <= 10) or (hue >= 160):
@@ -20,14 +23,15 @@ def get_color_name(hue):
 
 
 def process_colored_shapes(image_path):
+    # Чтение изображения через skimage
+    img_rgb = imread(image_path)
 
-    img = cv2.imread(image_path)
-    if img is None:
-        print(f"Ошибка: Не удалось найти файл {image_path}")
-        return
+    # Конвертация из float [0,1] в uint8 [0,255]
+    img = (img_rgb * 255).astype(np.uint8)
 
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Конвертация в HSV (skimage читает в RGB формате)
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
     _, thresh = cv2.threshold(gray, 20, 255, cv2.THRESH_BINARY)
 
@@ -37,7 +41,7 @@ def process_colored_shapes(image_path):
     circles_colors = []
 
     for cnt in contours:
-        if cv2.contourArea(cnt) < 150:  # Фильтр шума
+        if cv2.contourArea(cnt) < 150:
             continue
 
         peri = cv2.arcLength(cnt, True)
@@ -59,7 +63,6 @@ def process_colored_shapes(image_path):
     rect_stats = Counter(rects_colors)
     circle_stats = Counter(circles_colors)
 
-    # Вывод результатов
     print("=" * 30)
     print(f"ИТОГО ФИГУР: {total}")
     print("=" * 30)
@@ -72,5 +75,16 @@ def process_colored_shapes(image_path):
     for color, count in circle_stats.items():
         print(f"  - {color}: {count}")
 
-path = r'C:\Users\nikit\OneDrive\Desktop\compvision\figures_and_colors\balls_and_rects.png'
-process_colored_shapes(path)
+
+# Получаем путь к папке со скриптом
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Создаем полный путь к изображению
+path = os.path.join(script_dir, 'balls_and_rects.png')
+
+# Проверяем существует ли файл
+if os.path.exists(path):
+    print(f"Загрузка файла: {path}")
+    process_colored_shapes(path)
+else:
+    print(f"Ошибка: Файл не найден по пути: {path}")
+    print("Убедитесь, что balls_and_rects.png находится в той же папке что и main.py")
