@@ -1,77 +1,82 @@
-import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+from skimage.io import imread
+from skimage.measure import regionprops, label
+from pathlib import Path
 
+def get_holes(prop):
+    img = prop.image
+    h, w = img.shape
+    padded = np.zeros((h + 2, w + 2))
+    padded[1:-1, 1:-1] = img
+    inv = np.logical_not(padded)
+    return np.max(label(inv)) - 1
 
-def get_feature_vector(img):
+def check_symm(prop):
+    img = prop.image.astype(float)
+    h, w = img.shape
+    if w < 6: return 0.0
+    mid = w // 2
+    l_part = img[:, :mid]
+    r_part = np.fliplr(img[:, w - mid:])
+    diff = np.mean(np.abs(l_part - r_part))
+    return 1.0 - diff
 
-    resized = cv2.resize(img, (20, 20))
+def get_features(prop):
+    h, w = prop.image.shape
+    cy, cx = prop.centroid_local
+    area_ratio = prop.area / prop.image.size
+    y_rel = cy / h
+    x_rel = cx / w
+    perim_ratio = prop.perimeter / prop.image.size
+    hl = get_holes(prop)
+    v_l = (np.sum(prop.image, axis=0) == h).sum() / w
+    h_l = (np.sum(prop.image, axis=1) == w).sum() / h
+    ecc = prop.eccentricity
+    asp = min(h, w) / max(h, w)
+    symm = check_symm(prop)
+    return np.array([area_ratio, x_rel, y_rel, perim_ratio, hl, v_l, h_l, ecc, asp, symm])
 
-    return resized.flatten().astype(float)
-
-
-def find_characters(image_path, is_template=False):
-
-    img = cv2.imread(image_path)
-    if img is None:
-        print(f"Ошибка: не удалось загрузить {image_path}")
-        return []
-
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    if is_template:
-        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
-    else:
-        _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if is_template:
-        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
-
-    char_imgs = []
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-
-        if w > 2 and h > 5:
-            roi = thresh[y:y + h, x:x + w]
-            char_imgs.append(roi)
-
-    return char_imgs
-
-
-alphabet_list = ['A', 'B', '8', '0', '1', 'W', 'X', '*', '-', '/']
-
-small_chars_images = find_characters('alphabet-small.png', is_template=True)
-
-reference_vectors = []
-for i in range(min(len(alphabet_list), len(small_chars_images))):
-    vec = get_feature_vector(small_chars_images[i])
-    reference_vectors.append((alphabet_list[i], vec))
-
-test_chars_images = find_characters('alphabet.png', is_template=False)
-counts = {char: 0 for char in alphabet_list}
-counts['Unknown'] = 0
-
-for char_img in test_chars_images:
-    test_vec = get_feature_vector(char_img)
-    best_char = None
+def recognize(prop, refs):
+    vec = get_features(prop)
+    best_sym = ""
     min_dist = float('inf')
-
-    for char_name, ref_vec in reference_vectors:
-        dist = np.linalg.norm(test_vec - ref_vec)
+    for sym, ref_vec in refs.items():
+        dist = np.sqrt(np.sum((ref_vec - vec) ** 2))
         if dist < min_dist:
             min_dist = dist
-            best_char = char_name
-    if min_dist < 4000.0:
-        counts[best_char] += 1
-    else:
-        counts['Unknown'] += 1
+            best_sym = sym
+    return best_sym
 
-print("\nРезультаты распознавания:")
-total_found = 0
-for char, count in counts.items():
-    if count > 0:
-        print(f"'{char}': {count}")
-        if char != 'Unknown':
-            total_found += count
-print(f"Всего распознано символов: {total_found}")
+def main():
+    out_dir = Path(__file__).parent / "out"
+    out_dir.mkdir(exist_ok=True)
+
+    ref_img = imread("alphabet-small.png")[
+              :, :, :-1]
+    ref_gray = ref_img.sum(axis=2)
+    ref_bin = ref_gray != 765.0
+    ref_props = regionprops(label(ref_bin))
+
+    symbols = ["8", "O", "A", "B", "1", "W", "X", "*", "/", "-"]
+    reference_data = {sym: get_features(p) for p, sym in zip(ref_props, symbols)}
+
+    target_img = imread("alphabet.png")[:,
+                 :, :-1]
+    target_bin = target_img.mean(axis=2) > 0
+    target_props = regionprops(label(target_bin))
+
+    counts = {}
+    fig = plt.figure(figsize=(5, 7))
+
+    for p in target_props:
+        sym = recognize(p, reference_data)
+        counts[sym] = counts.get(sym, 0) + 1
+        plt.clf()
+        plt.title(f"Class - '{sym}'")
+        plt.imshow(p.image)
+        plt.savefig(out_dir / f"image_{p.label}.png")
+    print(counts)
+
+if __name__ == "__main__":
+    main()
