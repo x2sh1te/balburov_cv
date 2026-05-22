@@ -1,31 +1,27 @@
 import numpy as np
-from skimage.measure import label, regionprops
-from pathlib import Path
+from scipy import ndimage
 
-BASE_PATH = Path(__file__).parent
-coins = np.load(BASE_PATH / "coins.npy")
+img = np.load('coins.npy')
 
-labeled = label(coins)
-props = regionprops(labeled)
+labeled, n = ndimage.label(img)
 
-# измеряем площадь каждой монеты
-areas = [p.area for p in props]
+radii = []
+for i in range(1, n + 1):
+    area = np.sum(labeled == i)
+    radii.append(np.sqrt(area / np.pi))
+radii = np.array(radii)
 
-# кластеризация по размеру: 4 номинала → 4 группы
-unique_areas = sorted(set(areas))
-if len(unique_areas) > 4:
-    # Если много вариаций — группируем через квантование
-    unique_areas = sorted(np.quantile(areas, [0.1, 0.35, 0.65, 0.95]))
+q = np.percentile(radii, [25, 50, 75])
+nominals = [1, 2, 5, 10]
 
-# сопоставление: наименьшая → 1, далее → 2, 5, 10
-size_to_value = {s: v for s, v in zip(sorted(unique_areas)[:4], [1, 2, 5, 10])}
+def get_nominal(r):
+    if   r < q[0]: return nominals[0]
+    elif r < q[1]: return nominals[1]
+    elif r < q[2]: return nominals[2]
+    else:          return nominals[3]
 
-# подсчёт суммы
-total = 0
-for p in props:
-    closest = min(size_to_value.keys(), key=lambda s: abs(s - p.area))
-    value = size_to_value[closest]
-    total += value
+coins = [get_nominal(r) for r in radii]
 
-print(f"💰 Общая сумма: {total}")
-print(f"🪙 Найдено монет: {len(props)}")
+print(f"Монет найдено: {n}")
+print(f"Номиналы: {sorted(coins)}")
+print(f"Сумма: {sum(coins)} руб.")
