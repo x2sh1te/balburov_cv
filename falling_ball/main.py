@@ -5,18 +5,15 @@ import numpy as np
 WINDOW_NAME = "Falling Ball - Camera"
 BALL_START_Y = 40
 
-# Camera settings
 input_mode = "camera"
 camera_index = 0
 projector_fullscreen = False
 
-# Simulation settings
 ball_radius = 15
 gravity = 0.5
 friction = 0.98
 max_speed = 15.0
 
-# Platform detection settings
 min_platform_length = 50
 adaptive_threshold_block_size = 21
 adaptive_threshold_c = 5
@@ -186,7 +183,6 @@ def main():
 
             platforms = detect_platforms(camera_frame) if show_debug else []
 
-            # Вся логика симуляции основана на платформе, даже если они не отрисовываются
             if simulation_started:
                 ball_pos, ball_velocity, simulation_started = update_physics(
                     ball_pos,
@@ -195,7 +191,6 @@ def main():
                     black_bg,
                 )
 
-            # Рендеринг
             frame_to_show = black_bg.copy()
             if show_debug:
                 for start_point, end_point in platforms:
